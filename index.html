@@ -17,6 +17,10 @@
 
   <main>
     <section class="periodic-table-container">
+      <div class="pick-banner" id="pick-banner" hidden>
+        <span id="pick-banner-text">Click an element to react with Na</span>
+        <button id="pick-cancel-btn" class="ctrl-btn">Cancel</button>
+      </div>
       <div class="periodic-table" id="periodic-table"></div>
       <div class="table-legend" id="table-legend"></div>
     </section>
@@ -71,6 +75,10 @@
             <button id="ion-mode-btn" class="ctrl-btn" title="Show what happens when this atom reacts">Ion Mode</button>
             <span class="ion-mode-hint" id="ion-mode-hint"></span>
           </div>
+          <div class="ion-mode-row">
+            <button id="react-btn" class="ctrl-btn" title="See how this element reacts with another">React With…</button>
+            <span class="ion-mode-hint" id="react-hint"></span>
+          </div>
         </div>
 
         <div class="isotope-controls">
@@ -95,6 +103,13 @@
           </button>
           <div class="behaviour-cards" id="behaviour-cards"></div>
         </div>
+
+        <!-- Reaction Result Panel -->
+        <div class="reaction-panel" id="reaction-panel" hidden>
+          <div class="reaction-equation" id="reaction-equation"></div>
+          <div class="behaviour-cards open" id="reaction-cards"></div>
+          <button id="exit-reaction-btn" class="ctrl-btn">Exit Reaction</button>
+        </div>
       </div>
     </section>
   </main>
@@ -102,6 +117,7 @@
   <script src="js/elements.js"></script>
   <script src="js/periodic-table.js"></script>
   <script src="js/behaviour.js"></script>
+  <script src="js/reaction.js"></script>
   <script src="js/atom-viewer.js"></script>
   <script src="js/app.js"></script>
 </body>

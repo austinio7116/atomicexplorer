@@ -7,6 +7,9 @@ const PeriodicTable = (() => {
   let selectedNumber = 1;
   let activeCategory = null;
   let onSelect = () => {};
+  let pickMode = false;
+  let pickFilter = null;
+  let onPickSelect = null;
   const tooltip = document.createElement('div');
   tooltip.className = 'element-tooltip';
   document.body.appendChild(tooltip);
@@ -105,7 +108,16 @@ const PeriodicTable = (() => {
 
         if (el.number === selectedNumber) cell.classList.add('selected');
 
-        cell.addEventListener('click', () => selectElement(el.number));
+        cell.addEventListener('click', () => {
+          if (pickMode && onPickSelect) {
+            const target = getElementById(el.number);
+            if (target && pickFilter && pickFilter(target)) {
+              onPickSelect(el.number);
+            }
+            return;
+          }
+          selectElement(el.number);
+        });
         cell.addEventListener('mouseenter', (e) => showTooltip(e, el));
         cell.addEventListener('mousemove', (e) => moveTooltip(e));
         cell.addEventListener('mouseleave', hideTooltip);
@@ -210,5 +222,35 @@ const PeriodicTable = (() => {
     });
   }
 
-  return { init, selectElement };
+  /**
+   * Enter/exit pick mode. In pick mode, clicking an element calls
+   * onPickCb instead of the normal select. filterFn(element) → bool
+   * determines which elements are clickable (rest are dimmed).
+   */
+  function setPickMode(enabled, filterFn, onPickCb) {
+    pickMode = enabled;
+    pickFilter = filterFn || null;
+    onPickSelect = onPickCb || null;
+
+    const grid = document.getElementById('periodic-table');
+    grid.classList.toggle('pick-mode', enabled);
+
+    document.querySelectorAll('.element-cell[data-number]').forEach(cell => {
+      const el = getElementById(+cell.dataset.number);
+      if (!el) return;
+      if (enabled && filterFn) {
+        const valid = filterFn(el);
+        cell.classList.toggle('dimmed', !valid);
+        cell.classList.toggle('pick-highlight', valid);
+      } else {
+        cell.classList.remove('pick-highlight');
+        // Restore normal dim state
+        if (!activeCategory || el.category === activeCategory) {
+          cell.classList.remove('dimmed');
+        }
+      }
+    });
+  }
+
+  return { init, selectElement, setPickMode };
 })();

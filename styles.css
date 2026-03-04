@@ -446,6 +446,8 @@ main {
   padding-top: 12px;
 }
 
+.behaviour-panel[hidden] { display: none; }
+
 .behaviour-toggle {
   width: 100%;
   display: flex;
@@ -539,6 +541,105 @@ main {
   font-size: 0.78rem;
   color: var(--text-dim);
   line-height: 1.5;
+}
+
+/* === Pick Banner === */
+.pick-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff;
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.pick-banner[hidden] { display: none; }
+
+.pick-banner .ctrl-btn {
+  color: #fff;
+  border-color: rgba(255,255,255,0.4);
+}
+.pick-banner .ctrl-btn:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: #fff;
+}
+
+/* Pick mode highlights on periodic table */
+.element-cell.pick-highlight {
+  box-shadow: 0 0 8px 2px rgba(56, 189, 248, 0.4);
+  border-color: var(--accent);
+}
+.element-cell.pick-highlight:hover {
+  box-shadow: 0 0 14px 4px rgba(56, 189, 248, 0.5);
+}
+
+.periodic-table.pick-mode .element-cell.dimmed {
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+/* === Reaction Panel === */
+.reaction-panel {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reaction-panel[hidden] { display: none; }
+
+.reaction-equation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px;
+  background: var(--bg3);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  font-size: 1rem;
+}
+
+.eq-el {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--accent);
+}
+
+.eq-formula {
+  font-weight: 800;
+  font-size: 1.4rem;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.eq-type {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  padding: 2px 10px;
+  border-radius: 20px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  margin-left: 6px;
+}
+
+#exit-reaction-btn {
+  align-self: center;
+}
+
+#react-btn.active {
+  background: var(--accent2);
+  color: #fff;
+  border-color: var(--accent2);
 }
 
 /* === Responsive === */

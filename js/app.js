@@ -1,13 +1,16 @@
 /**
  * Main application controller.
  * Wires the periodic table, atom viewer, behaviour panel,
- * info panel, and isotope controls together.
+ * info panel, isotope controls, and reaction mode together.
+ *
+ * States: 'normal' → 'picking' → 'reacting'
  */
 
 (function () {
   let currentElement = null;
   let currentIsotopeIdx = 0;
   let behaviourOpen = true;
+  let appState = 'normal'; // 'normal' | 'picking' | 'reacting'
 
   function start() {
     PeriodicTable.init(onElementSelected);
@@ -42,16 +45,32 @@
 
     // Ion mode toggle
     document.getElementById('ion-mode-btn').addEventListener('click', e => {
-      if (!currentElement) return;
+      if (!currentElement || appState !== 'normal') return;
       const charge = Behaviour.getLikelyIonCharge(currentElement);
       const isOn = AtomViewer.getIonMode();
 
-      if (charge === 0) return; // No typical ion for this element
+      if (charge === 0) return;
 
       AtomViewer.setIonMode(!isOn, charge);
       e.target.classList.toggle('active', !isOn);
       updateChargeBar();
       updateIonModeHint();
+    });
+
+    // React With... button
+    document.getElementById('react-btn').addEventListener('click', () => {
+      if (!currentElement || appState !== 'normal') return;
+      enterPickMode();
+    });
+
+    // Pick cancel
+    document.getElementById('pick-cancel-btn').addEventListener('click', () => {
+      exitPickMode();
+    });
+
+    // Exit reaction
+    document.getElementById('exit-reaction-btn').addEventListener('click', () => {
+      exitReactionMode();
     });
 
     // Behaviour panel toggle
@@ -64,6 +83,11 @@
     // Keyboard navigation
     document.addEventListener('keydown', e => {
       if (e.target.tagName === 'INPUT') return;
+      if (e.key === 'Escape') {
+        if (appState === 'picking') { exitPickMode(); return; }
+        if (appState === 'reacting') { exitReactionMode(); return; }
+      }
+      if (appState !== 'normal') return;
       if (!currentElement) return;
 
       let nextNum = currentElement.number;
@@ -84,7 +108,119 @@
     document.getElementById('behaviour-arrow').classList.add('open');
   }
 
+  // ---- State transitions ----
+
+  function enterPickMode() {
+    if (!currentElement) return;
+    const check = Reaction.canReactAtAll(currentElement);
+    if (!check.ok) return;
+
+    appState = 'picking';
+
+    // Disable ion mode
+    AtomViewer.setIonMode(false, 0);
+    document.getElementById('ion-mode-btn').classList.remove('active');
+    document.getElementById('ion-mode-btn').disabled = true;
+    document.getElementById('react-btn').classList.add('active');
+
+    // Show pick banner
+    const banner = document.getElementById('pick-banner');
+    banner.hidden = false;
+    document.getElementById('pick-banner-text').textContent =
+      `Click an element to react with ${currentElement.symbol}`;
+
+    // Set pick mode on table
+    const filter = Reaction.makePickFilter(currentElement);
+    PeriodicTable.setPickMode(true, filter, onPartnerPicked);
+  }
+
+  function exitPickMode() {
+    appState = 'normal';
+
+    document.getElementById('pick-banner').hidden = true;
+    document.getElementById('react-btn').classList.remove('active');
+
+    PeriodicTable.setPickMode(false);
+    updateIonModeHint(); // re-enable ion button if applicable
+    updateReactHint();
+  }
+
+  function onPartnerPicked(atomicNumber) {
+    const partner = getElementById(atomicNumber);
+    if (!partner || !currentElement) return;
+
+    const check = Reaction.canReact(currentElement, partner);
+    if (!check.ok) return;
+
+    // Exit pick mode visuals
+    document.getElementById('pick-banner').hidden = true;
+    PeriodicTable.setPickMode(false);
+
+    // Enter reaction mode
+    appState = 'reacting';
+    const data = Reaction.getReactionData(currentElement, partner);
+
+    // Show reaction on canvas
+    AtomViewer.setReaction(data.elA, data.elB, data);
+
+    // Show reaction panel, hide behaviour panel
+    document.getElementById('behaviour-panel').hidden = true;
+    document.getElementById('reaction-panel').hidden = false;
+    document.getElementById('react-btn').classList.add('active');
+
+    // Fill equation
+    document.getElementById('reaction-equation').innerHTML =
+      `<span class="eq-el">${data.elA.symbol}</span> + ` +
+      `<span class="eq-el">${data.elB.symbol}</span> → ` +
+      `<span class="eq-formula">${data.formula}</span>` +
+      `<span class="eq-type">${data.bondType} bond</span>`;
+
+    // Fill insight cards
+    const insights = Reaction.getReactionInsights(data);
+    const container = document.getElementById('reaction-cards');
+    container.innerHTML = '';
+    insights.forEach(insight => {
+      const card = document.createElement('div');
+      card.className = 'insight-card';
+      card.setAttribute('data-topic', insight.topic);
+      card.innerHTML = `
+        <div class="insight-icon">${insight.icon}</div>
+        <div class="insight-content">
+          <div class="insight-title">${insight.title}</div>
+          <div class="insight-text">${insight.text}</div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function exitReactionMode() {
+    appState = 'normal';
+
+    AtomViewer.clearReaction();
+    document.getElementById('reaction-panel').hidden = true;
+    document.getElementById('behaviour-panel').hidden = false;
+    document.getElementById('react-btn').classList.remove('active');
+
+    // Restore single atom view
+    if (currentElement) {
+      AtomViewer.setElement(currentElement, currentIsotopeIdx);
+    }
+    updateIonModeHint();
+    updateReactHint();
+  }
+
+  // ---- Normal mode handlers ----
+
   function onElementSelected(atomicNumber) {
+    // If in reaction mode, exit first
+    if (appState === 'reacting') {
+      exitReactionMode();
+    }
+    if (appState === 'picking') {
+      exitPickMode();
+    }
+
     currentElement = getElementById(atomicNumber);
     if (!currentElement) return;
 
@@ -96,6 +232,7 @@
     updateChargeBar();
     updateBehaviourPanel();
     updateIonModeHint();
+    updateReactHint();
 
     // Reset ion mode button
     document.getElementById('ion-mode-btn').classList.remove('active');
@@ -217,6 +354,25 @@
       btn.style.opacity = '1';
       const action = ionCharge > 0 ? `loses ${ionCharge}e⁻` : `gains ${Math.abs(ionCharge)}e⁻`;
       hint.textContent = `${action} → ${ionSymbol}`;
+    }
+  }
+
+  function updateReactHint() {
+    const el = currentElement;
+    const hint = document.getElementById('react-hint');
+    const btn = document.getElementById('react-btn');
+
+    if (!el) return;
+
+    const check = Reaction.canReactAtAll(el);
+    if (!check.ok) {
+      btn.disabled = true;
+      btn.style.opacity = '0.4';
+      hint.textContent = check.reason;
+    } else {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      hint.textContent = '';
     }
   }
 
