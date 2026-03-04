@@ -443,12 +443,31 @@ main {
 }
 
 /* === Behaviour Panel === */
-.behaviour-panel {
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
+/* === Insights Sections (behaviour + reaction) === */
+.insights-section {
+  background: var(--bg2);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.behaviour-panel[hidden] { display: none; }
+.insights-section[hidden] { display: none; }
+
+.insights-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.insights-cards-grid:empty { display: none; }
+
+/* Hide behaviour grid until toggled open */
+#behaviour-cards { display: none; }
+#behaviour-cards.open { display: grid; }
 
 .behaviour-toggle {
   width: 100%;
@@ -483,17 +502,6 @@ main {
 
 .toggle-arrow.open {
   transform: rotate(180deg);
-}
-
-.behaviour-cards {
-  display: none;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.behaviour-cards.open {
-  display: flex;
 }
 
 .insight-card {
@@ -591,15 +599,9 @@ main {
 }
 
 /* === Reaction Panel === */
-.reaction-panel {
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+.reaction-panel { align-items: center; }
 
-.reaction-panel[hidden] { display: none; }
+#exit-reaction-btn { align-self: center; }
 
 .reaction-equation {
   display: flex;

@@ -95,22 +95,23 @@
           </div>
         </div>
 
-        <!-- Behaviour Panel -->
-        <div class="behaviour-panel" id="behaviour-panel">
-          <button class="behaviour-toggle" id="behaviour-toggle">
-            <span>Why does it behave this way?</span>
-            <span class="toggle-arrow" id="behaviour-arrow">▼</span>
-          </button>
-          <div class="behaviour-cards" id="behaviour-cards"></div>
-        </div>
-
-        <!-- Reaction Result Panel -->
-        <div class="reaction-panel" id="reaction-panel" hidden>
-          <div class="reaction-equation" id="reaction-equation"></div>
-          <div class="behaviour-cards open" id="reaction-cards"></div>
-          <button id="exit-reaction-btn" class="ctrl-btn">Exit Reaction</button>
-        </div>
       </div>
+    </section>
+
+    <!-- Behaviour Panel — full width below atom panel -->
+    <section class="insights-section" id="behaviour-panel">
+      <button class="behaviour-toggle" id="behaviour-toggle">
+        <span>Why does it behave this way?</span>
+        <span class="toggle-arrow" id="behaviour-arrow">▼</span>
+      </button>
+      <div class="insights-cards-grid" id="behaviour-cards"></div>
+    </section>
+
+    <!-- Reaction Result Panel — same position, shown during reaction mode -->
+    <section class="insights-section reaction-panel" id="reaction-panel" hidden>
+      <div class="reaction-equation" id="reaction-equation"></div>
+      <div class="insights-cards-grid" id="reaction-cards"></div>
+      <button id="exit-reaction-btn" class="ctrl-btn">Exit Reaction</button>
     </section>
   </main>
 

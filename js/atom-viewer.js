@@ -563,108 +563,176 @@ const AtomViewer = (() => {
     ctx.fillText(el.name, cx, cy + maxRadius + 14 * scale);
   }
 
+  // ---- Multi-atom layout engine ----
+
   /**
-   * Draw ionic reaction: electrons arc from metal to non-metal.
+   * Compute positions for all atoms in the reaction.
+   * Layout: group A atoms on the left, group B atoms on the right,
+   * each group stacked vertically and centred in its half.
    */
-  function drawIonicReaction(w, h, cxA, cyA, cxB, cyB, scale) {
+  function layoutReactionAtoms(w, h) {
     const data = reactionData;
-    const elA = data.elA; // metal
-    const elB = data.elB; // non-metal
-    const phase = reactionPhase;
+    const sameElement = data.elB && data.elA.number === data.elB.number;
 
-    const shellsA = elA.shells;
-    const shellsB = elB.shells;
-    const outerA = shellsA[shellsA.length - 1];
-    const maxRadA = 90 * scale;
-    const coreRadA = 14 * scale;
-    const outerRadA = coreRadA + maxRadA - coreRadA; // = maxRadA
-    const maxRadB = 90 * scale;
-    const coreRadB = 14 * scale;
-    const outerRadB = maxRadB;
-
-    const transferCount = Math.abs(data.chargeA);
-
-    // Phase 0–0.3: both atoms neutral
-    // Phase 0.3–0.7: electrons transfer
-    // Phase 0.7–1.0: ions shown
-
-    // Draw atom A (metal)
-    drawAtomAtIonic(elA, cxA, cyA, scale, phase, 'metal', transferCount);
-    // Draw atom B (non-metal)
-    drawAtomAtIonic(elB, cxB, cyB, scale, phase, 'nonmetal', Math.abs(data.chargeB));
-
-    // Transferring electrons (phase 0.3–0.7)
-    if (phase > 0.3 && phase < 0.95) {
-      const t = Math.min(1, (phase - 0.3) / 0.4); // 0→1 during transfer phase
-      for (let i = 0; i < transferCount; i++) {
-        const delay = i * 0.15;
-        const ti = Math.max(0, Math.min(1, (t - delay) / (1 - delay * transferCount)));
-        if (ti <= 0) continue;
-
-        // Quadratic bezier from A outer shell to B outer shell
-        const startAngle = (i / transferCount) * Math.PI * 2 + time * 0.3;
-        const sx = cxA + Math.cos(startAngle) * outerRadA;
-        const sy = cyA + Math.sin(startAngle) * outerRadA;
-        const ex = cxB + Math.cos(Math.PI + startAngle) * outerRadB;
-        const ey = cyB + Math.sin(Math.PI + startAngle) * outerRadB;
-        const cpx = (cxA + cxB) / 2;
-        const cpy = cyA - 50 * scale - i * 15 * scale;
-
-        // Position along bezier
-        const bx = (1-ti)*(1-ti)*sx + 2*(1-ti)*ti*cpx + ti*ti*ex;
-        const by = (1-ti)*(1-ti)*sy + 2*(1-ti)*ti*cpy + ti*ti*ey;
-
-        // Electron dot
-        const color = '#fbbf24';
-        const grad = ctx.createRadialGradient(bx, by, 0, bx, by, 8 * scale);
-        grad.addColorStop(0, color + 'ff');
-        grad.addColorStop(1, color + '00');
-        ctx.beginPath();
-        ctx.arc(bx, by, 8 * scale, 0, Math.PI * 2);
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(bx, by, 3 * scale, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.fill();
+    // Build two groups
+    const groupA = [];
+    for (let i = 0; i < data.ratioA; i++) {
+      groupA.push({ el: data.elA, role: data.bondType === 'ionic' ? 'metal' : 'a' });
+    }
+    const groupB = [];
+    if (data.ratioB > 0) {
+      for (let i = 0; i < data.ratioB; i++) {
+        groupB.push({ el: sameElement ? data.elA : data.elB, role: data.bondType === 'ionic' ? 'nonmetal' : 'b' });
       }
     }
 
-    // Phase 0.7–1: show charges and formula
+    const n = groupA.length + groupB.length;
+    const maxPerColumn = Math.max(groupA.length, groupB.length);
+
+    // Scale: fit the tallest column and two side-by-side groups
+    const baseScale = Math.min(w, h) / 400;
+    // Vertical: each atom needs ~200*scale height (90 radius + label + gap)
+    const vFit = maxPerColumn > 1 ? (h * 0.7) / (maxPerColumn * 200) : baseScale;
+    // Horizontal: two groups need ~200*scale each with a gap
+    const hFit = groupB.length > 0 ? (w * 0.8) / (2 * 200) : (w * 0.8) / (200);
+    const atomScale = Math.max(0.25, Math.min(baseScale, vFit, hFit));
+
+    const atomSpacingY = 190 * atomScale;
+
+    // Position group A: centred vertically on the left side
+    const leftX = groupB.length > 0 ? w * 0.28 : w * 0.5;
+    const rightX = w * 0.72;
+    const centreY = h * 0.45;
+
+    function stackPositions(group, cx) {
+      const totalH = (group.length - 1) * atomSpacingY;
+      return group.map((a, i) => ({
+        ...a,
+        cx: cx,
+        cy: centreY - totalH / 2 + i * atomSpacingY
+      }));
+    }
+
+    const positions = [
+      ...stackPositions(groupA, leftX),
+      ...stackPositions(groupB, rightX)
+    ];
+
+    return { positions, atomScale, n };
+  }
+
+  /**
+   * Draw ionic reaction with actual atom counts.
+   */
+  function drawIonicReaction(w, h, positions, atomScale) {
+    const data = reactionData;
+    const phase = reactionPhase;
+    const transferPerMetal = Math.abs(data.chargeA);
+    const gainPerNonmetal = Math.abs(data.chargeB);
+
+    // Separate metal and non-metal positions
+    const metals = positions.filter(p => p.role === 'metal');
+    const nonmetals = positions.filter(p => p.role === 'nonmetal');
+
+    // Draw all atoms
+    positions.forEach(p => {
+      const transfer = p.role === 'metal' ? transferPerMetal : gainPerNonmetal;
+      drawAtomAtIonic(p.el, p.cx, p.cy, atomScale, phase, p.role, transfer);
+    });
+
+    // Transferring electrons (phase 0.3–0.7): each metal sends electrons to nearest non-metal
+    if (phase > 0.3 && phase < 0.95) {
+      const t = Math.min(1, (phase - 0.3) / 0.4);
+      metals.forEach((m, mi) => {
+        // Find nearest non-metal
+        let nearest = nonmetals[0];
+        let bestDist = Infinity;
+        nonmetals.forEach(nm => {
+          const d = Math.abs(nm.cx - m.cx) + Math.abs(nm.cy - m.cy);
+          if (d < bestDist) { bestDist = d; nearest = nm; }
+        });
+
+        for (let i = 0; i < transferPerMetal; i++) {
+          const delay = i * 0.12;
+          const ti = Math.max(0, Math.min(1, (t - delay) / (1 - delay)));
+          if (ti <= 0) continue;
+
+          const outerRad = 90 * atomScale;
+          // Depart from right side of metal, arrive at left side of non-metal
+          const spread = (i - (transferPerMetal - 1) / 2) * 20 * atomScale;
+          const sx = m.cx + outerRad;
+          const sy = m.cy + spread;
+          const ex = nearest.cx - outerRad;
+          const ey = nearest.cy + spread;
+          const cpx = (m.cx + nearest.cx) / 2;
+          const cpy = (m.cy + nearest.cy) / 2 - 30 * atomScale + spread;
+
+          const bx = (1-ti)*(1-ti)*sx + 2*(1-ti)*ti*cpx + ti*ti*ex;
+          const by = (1-ti)*(1-ti)*sy + 2*(1-ti)*ti*cpy + ti*ti*ey;
+
+          const color = '#fbbf24';
+          const grad = ctx.createRadialGradient(bx, by, 0, bx, by, 8 * atomScale);
+          grad.addColorStop(0, color + 'ff');
+          grad.addColorStop(1, color + '00');
+          ctx.beginPath();
+          ctx.arc(bx, by, 8 * atomScale, 0, Math.PI * 2);
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(bx, by, 3 * atomScale, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+        }
+      });
+    }
+
+    // Phase 0.7+: charges, bonds, formula
     if (phase > 0.7) {
       const fadeIn = Math.min(1, (phase - 0.7) / 0.3);
       ctx.globalAlpha = fadeIn;
+      const outerRad = 90 * atomScale;
 
-      // Charge labels
-      const chargeA = data.chargeA > 0 ? '+' + data.chargeA : '−' + Math.abs(data.chargeA);
-      const chargeB = data.chargeB > 0 ? '+' + data.chargeB : '−' + Math.abs(data.chargeB);
-      ctx.font = `bold ${14 * scale}px system-ui`;
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#f87171';
-      ctx.fillText(chargeA, cxA + 30 * scale, cyA - 90 * scale);
-      ctx.fillStyle = '#60a5fa';
-      ctx.fillText(chargeB, cxB + 30 * scale, cyB - 90 * scale);
+      // Charge labels on each atom
+      positions.forEach(p => {
+        const ch = p.role === 'metal' ? data.chargeA : data.chargeB;
+        const label = (ch > 0 ? '+' : '−') + Math.abs(ch);
+        ctx.font = `bold ${Math.max(9, 12 * atomScale)}px system-ui`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = ch > 0 ? '#f87171' : '#60a5fa';
+        ctx.fillText(label, p.cx + outerRad * 0.35, p.cy - outerRad - 4);
+      });
 
-      // Attraction indicator
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.moveTo(cxA + outerRadA + 5, cyA);
-      ctx.lineTo(cxB - outerRadB - 5, cyB);
-      ctx.strokeStyle = '#fbbf2480';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.setLineDash([]);
+      // Attraction indicator: single dashed line between group centres
+      if (metals.length > 0 && nonmetals.length > 0) {
+        const mCentreX = metals.reduce((s, p) => s + p.cx, 0) / metals.length;
+        const mCentreY = metals.reduce((s, p) => s + p.cy, 0) / metals.length;
+        const nmCentreX = nonmetals.reduce((s, p) => s + p.cx, 0) / nonmetals.length;
+        const nmCentreY = nonmetals.reduce((s, p) => s + p.cy, 0) / nonmetals.length;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = '#fbbf2460';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(mCentreX + outerRad, mCentreY);
+        ctx.lineTo(nmCentreX - outerRad, nmCentreY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // "+" and "−" labels on the line
+        const lineMidX = (mCentreX + nmCentreX) / 2;
+        const lineMidY = (mCentreY + nmCentreY) / 2;
+        ctx.font = `bold ${Math.max(10, 13 * atomScale)}px system-ui`;
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText('attracts', lineMidX, lineMidY - 8);
+      }
 
-      // Arrow
-      const midX = (cxA + cxB) / 2;
-      ctx.font = `bold ${14 * scale}px system-ui`;
+      // Bond type + formula at bottom
+      const midX = w / 2;
+      ctx.font = `bold ${Math.max(11, 14 * atomScale)}px system-ui`;
       ctx.fillStyle = '#fbbf24';
-      ctx.fillText('⟶ ionic bond', midX, cyA + 110 * scale);
-
-      // Formula
-      ctx.font = `bold ${18 * scale}px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.fillText('ionic bond', midX, h - 38);
+      ctx.font = `bold ${Math.max(14, 18 * atomScale)}px system-ui`;
       ctx.fillStyle = '#fff';
-      ctx.fillText(data.formula, midX, h - 20 * scale);
+      ctx.fillText(data.formula, midX, h - 16);
 
       ctx.globalAlpha = 1;
     }
@@ -761,100 +829,142 @@ const AtomViewer = (() => {
   }
 
   /**
-   * Draw covalent reaction: atoms move together and share electrons.
+   * Draw covalent reaction with actual atom counts.
+   * Atoms move toward centre and share electrons in overlap zones.
    */
-  function drawCovalentReaction(w, h, cxA, cyA, cxB, cyB, scale) {
+  function drawCovalentReaction(w, h, positions, atomScale) {
     const data = reactionData;
-    const elA = data.elA;
-    const elB = data.elB;
     const phase = reactionPhase;
-    const sameElement = elA.number === elB.number;
+    const n = positions.length;
 
-    const maxRad = 90 * scale;
+    // Centre of all atoms
+    const centreX = positions.reduce((s, p) => s + p.cx, 0) / n;
+    const centreY = positions.reduce((s, p) => s + p.cy, 0) / n;
 
-    // Phase 0.3–0.7: atoms move closer
+    // Phase 0.3–0.7: atoms drift toward centre
     let moveT = 0;
     if (phase > 0.3) moveT = Math.min(1, (phase - 0.3) / 0.4);
-    const overlap = 35 * scale * moveT;
-    const axDraw = cxA + overlap;
-    const bxDraw = cxB - overlap;
+    const driftFraction = 0.25 * moveT; // move 25% toward centre
 
-    // Draw atoms at adjusted positions
-    drawAtomAt(elA, axDraw, cyA, scale);
-    drawAtomAt(sameElement ? elA : elB, bxDraw, cyB, scale);
+    const drawn = positions.map(p => {
+      const dx = centreX - p.cx;
+      const dy = centreY - p.cy;
+      return {
+        ...p,
+        drawX: p.cx + dx * driftFraction,
+        drawY: p.cy + dy * driftFraction
+      };
+    });
 
-    // Phase 0.3+: overlap zone
+    // Draw each atom
+    drawn.forEach(p => drawAtomAt(p.el, p.drawX, p.drawY, atomScale));
+
+    // Phase 0.3+: overlap glow between bonded pairs only
+    // Bonds form between group A and group B atoms, not within the same group
+    // For diatomics (same element), both are role 'a' so bond the pair
     if (phase > 0.3) {
       const fadeIn = Math.min(1, (phase - 0.3) / 0.3);
-      const midX = (axDraw + bxDraw) / 2;
-      const midY = (cyA + cyB) / 2;
-      const overlapW = Math.max(10, (axDraw + maxRad) - (bxDraw - maxRad));
+      const sameElement = data.ratioB === 0;
 
-      ctx.globalAlpha = 0.15 * fadeIn;
-      ctx.beginPath();
-      ctx.ellipse(midX, midY, overlapW / 2 + 10 * scale, maxRad * 0.7, 0, 0, Math.PI * 2);
-      ctx.fillStyle = '#fbbf24';
-      ctx.fill();
-      ctx.globalAlpha = 1;
+      // Build bond pairs: each A bonds to its nearest B (or the other A for diatomics)
+      const bondPairs = [];
+      if (sameElement) {
+        // Diatomic: bond the two atoms
+        if (drawn.length === 2) bondPairs.push([0, 1]);
+      } else {
+        const groupA = drawn.filter(p => p.role === 'a');
+        const groupB = drawn.filter(p => p.role === 'b');
+        // Each B bonds to its nearest A
+        groupB.forEach(b => {
+          let bestIdx = 0, bestDist = Infinity;
+          groupA.forEach((a, ai) => {
+            const d = Math.hypot(a.drawX - b.drawX, a.drawY - b.drawY);
+            if (d < bestDist) { bestDist = d; bestIdx = ai; }
+          });
+          bondPairs.push([drawn.indexOf(groupA[bestIdx]), drawn.indexOf(b)]);
+        });
+        // Also each A bonds to its nearest B (catches cases where A has more bonds)
+        groupA.forEach(a => {
+          let bestIdx = 0, bestDist = Infinity;
+          groupB.forEach((b, bi) => {
+            const d = Math.hypot(a.drawX - b.drawX, a.drawY - b.drawY);
+            if (d < bestDist) { bestDist = d; bestIdx = bi; }
+          });
+          const pair = [drawn.indexOf(a), drawn.indexOf(groupB[bestIdx])];
+          // Avoid duplicate pairs
+          const exists = bondPairs.some(bp =>
+            (bp[0] === pair[0] && bp[1] === pair[1]) || (bp[0] === pair[1] && bp[1] === pair[0]));
+          if (!exists) bondPairs.push(pair);
+        });
+      }
 
-      // Shared electrons in overlap
-      if (phase > 0.5) {
-        const eFade = Math.min(1, (phase - 0.5) / 0.2);
-        const pairsToShow = data.electronsPaired || 1;
-        for (let p = 0; p < pairsToShow; p++) {
-          const pAngle = time * 0.5 + (p / pairsToShow) * Math.PI * 2;
-          const pr = 15 * scale;
-          // Two electrons per pair
+      bondPairs.forEach(([ai, bi]) => {
+        const a = drawn[ai], b = drawn[bi];
+        const dx = b.drawX - a.drawX;
+        const dy = b.drawY - a.drawY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const maxRad = 90 * atomScale;
+
+        const midX = (a.drawX + b.drawX) / 2;
+        const midY = (a.drawY + b.drawY) / 2;
+        const overlapR = Math.max(8, maxRad * 0.6);
+        ctx.globalAlpha = 0.12 * fadeIn;
+        ctx.beginPath();
+        ctx.arc(midX, midY, overlapR, 0, Math.PI * 2);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // Shared electron pairs
+        if (phase > 0.5) {
+          const eFade = Math.min(1, (phase - 0.5) / 0.2);
+          const pAngle = time * 0.5 + (ai + bi) * 1.3;
+          const pr = 10 * atomScale;
           for (let d = -1; d <= 1; d += 2) {
             const ex = midX + Math.cos(pAngle) * pr;
-            const ey = midY + Math.sin(pAngle) * pr + d * 4 * scale;
+            const ey = midY + Math.sin(pAngle) * pr + d * 3 * atomScale;
             ctx.globalAlpha = eFade;
-            const grad = ctx.createRadialGradient(ex, ey, 0, ex, ey, 6 * scale);
+            const grad = ctx.createRadialGradient(ex, ey, 0, ex, ey, 5 * atomScale);
             grad.addColorStop(0, '#fbbf24cc');
             grad.addColorStop(1, '#fbbf2400');
             ctx.beginPath();
-            ctx.arc(ex, ey, 6 * scale, 0, Math.PI * 2);
+            ctx.arc(ex, ey, 5 * atomScale, 0, Math.PI * 2);
             ctx.fillStyle = grad;
             ctx.fill();
             ctx.beginPath();
-            ctx.arc(ex, ey, 2.5 * scale, 0, Math.PI * 2);
+            ctx.arc(ex, ey, 2 * atomScale, 0, Math.PI * 2);
             ctx.fillStyle = '#fbbf24';
             ctx.fill();
             ctx.globalAlpha = 1;
           }
         }
-      }
+      });
     }
 
     // Phase 0.7+: formula label
     if (phase > 0.7) {
       const fadeIn = Math.min(1, (phase - 0.7) / 0.3);
       ctx.globalAlpha = fadeIn;
-      const midX = (axDraw + bxDraw) / 2;
 
-      ctx.font = `bold ${14 * scale}px system-ui`;
+      ctx.font = `bold ${Math.max(11, 14 * atomScale)}px system-ui`;
       ctx.fillStyle = '#fbbf24';
       ctx.textAlign = 'center';
-      ctx.fillText('⟶ covalent bond', midX, cyA + 110 * scale);
-
-      ctx.font = `bold ${18 * scale}px system-ui`;
+      ctx.fillText('covalent bond', w / 2, h - 38);
+      ctx.font = `bold ${Math.max(14, 18 * atomScale)}px system-ui`;
       ctx.fillStyle = '#fff';
-      ctx.fillText(data.formula, midX, h - 20 * scale);
+      ctx.fillText(data.formula, w / 2, h - 16);
 
       ctx.globalAlpha = 1;
     }
   }
 
   function drawReaction(w, h) {
-    const scale = Math.min(w, h) / 400;
-    const cxA = w * 0.28;
-    const cxB = w * 0.72;
-    const cy = h / 2;
+    const { positions, atomScale } = layoutReactionAtoms(w, h);
 
     if (reactionData.bondType === 'ionic') {
-      drawIonicReaction(w, h, cxA, cy, cxB, cy, scale);
+      drawIonicReaction(w, h, positions, atomScale);
     } else {
-      drawCovalentReaction(w, h, cxA, cy, cxB, cy, scale);
+      drawCovalentReaction(w, h, positions, atomScale);
     }
   }
 
