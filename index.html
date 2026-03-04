@@ -16,16 +16,16 @@
   </header>
 
   <main>
-    <section class="periodic-table-container">
-      <div class="pick-banner" id="pick-banner" hidden>
-        <span id="pick-banner-text">Click an element to react with Na</span>
-        <button id="pick-cancel-btn" class="ctrl-btn">Cancel</button>
-      </div>
-      <div class="periodic-table" id="periodic-table"></div>
-      <div class="table-legend" id="table-legend"></div>
-    </section>
+    <div class="col-left">
+      <section class="periodic-table-container">
+        <div class="pick-banner" id="pick-banner" hidden>
+          <span id="pick-banner-text">Click an element to react with Na</span>
+          <button id="pick-cancel-btn" class="ctrl-btn">Cancel</button>
+        </div>
+        <div class="periodic-table" id="periodic-table"></div>
+        <div class="table-legend" id="table-legend"></div>
+      </section>
 
-    <section class="atom-panel">
       <div class="atom-viewer-wrap">
         <canvas id="atom-canvas" width="500" height="500"></canvas>
         <div class="viewer-controls">
@@ -44,7 +44,9 @@
           <span class="react-hint" id="react-hint"></span>
         </div>
       </div>
+    </div>
 
+    <div class="col-right">
       <div class="element-info" id="element-info">
         <div class="info-header">
           <span class="info-number" id="info-number">1</span>
@@ -95,23 +97,21 @@
         </div>
 
       </div>
-    </section>
 
-    <!-- Behaviour Panel — full width below atom panel -->
-    <section class="insights-section" id="behaviour-panel">
-      <button class="behaviour-toggle" id="behaviour-toggle">
-        <span>Why does it behave this way?</span>
-        <span class="toggle-arrow" id="behaviour-arrow">▼</span>
-      </button>
-      <div class="insights-cards-grid" id="behaviour-cards"></div>
-    </section>
+      <section class="insights-section" id="behaviour-panel">
+        <button class="behaviour-toggle" id="behaviour-toggle">
+          <span>Why does it behave this way?</span>
+          <span class="toggle-arrow" id="behaviour-arrow">▼</span>
+        </button>
+        <div class="insights-cards-grid" id="behaviour-cards"></div>
+      </section>
 
-    <!-- Reaction Result Panel — same position, shown during reaction mode -->
-    <section class="insights-section reaction-panel" id="reaction-panel" hidden>
-      <div class="reaction-equation" id="reaction-equation"></div>
-      <div class="insights-cards-grid" id="reaction-cards"></div>
-      <button id="exit-reaction-btn" class="ctrl-btn">Exit Reaction</button>
-    </section>
+      <section class="insights-section reaction-panel" id="reaction-panel" hidden>
+        <div class="reaction-equation" id="reaction-equation"></div>
+        <div class="insights-cards-grid" id="reaction-cards"></div>
+        <button id="exit-reaction-btn" class="ctrl-btn">Exit Reaction</button>
+      </section>
+    </div>
   </main>
 
   <script src="js/elements.js"></script>
