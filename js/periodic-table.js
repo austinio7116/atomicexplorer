@@ -121,6 +121,7 @@ const PeriodicTable = (() => {
         cell.addEventListener('mouseenter', (e) => showTooltip(e, el));
         cell.addEventListener('mousemove', (e) => moveTooltip(e));
         cell.addEventListener('mouseleave', hideTooltip);
+        cell.addEventListener('touchstart', hideTooltip, { passive: true });
 
         grid.appendChild(cell);
       }

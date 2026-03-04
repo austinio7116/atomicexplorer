@@ -274,6 +274,26 @@ main {
 .ctrl-btn:hover { border-color: var(--accent); color: var(--text); }
 .ctrl-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
 
+.controls-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.react-with-btn {
+  border-color: var(--accent2);
+  color: var(--accent2);
+  font-weight: 600;
+}
+.react-with-btn:hover { background: rgba(129, 140, 248, 0.1); }
+
+.react-hint {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
 /* === Element Info === */
 .element-info {
   flex: 0 0 320px;
@@ -684,6 +704,10 @@ main {
   max-width: 200px;
 }
 
+/* Hide tooltip on touch-only devices (no hover capability) */
+@media (hover: none) {
+  .element-tooltip { display: none !important; }
+}
 .element-tooltip.visible { opacity: 1; }
 .element-tooltip .tt-symbol { font-size: 1.4rem; font-weight: 700; }
 .element-tooltip .tt-name { color: var(--text-dim); }

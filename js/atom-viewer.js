@@ -153,7 +153,7 @@ const AtomViewer = (() => {
     ctx.clearRect(0, 0, w, h);
 
     if (reactionMode && reactionData) {
-      reactionPhase = lerp(reactionPhase, reactionTarget, 0.03);
+      reactionPhase = lerp(reactionPhase, reactionTarget, 0.008);
       drawReaction(w, h);
       return;
     }

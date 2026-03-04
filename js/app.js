@@ -132,6 +132,10 @@
     // Set pick mode on table
     const filter = Reaction.makePickFilter(currentElement);
     PeriodicTable.setPickMode(true, filter, onPartnerPicked);
+
+    // Scroll to the periodic table so the user can pick
+    document.querySelector('.periodic-table-container')
+      .scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function exitPickMode() {
@@ -192,6 +196,10 @@
       `;
       container.appendChild(card);
     });
+
+    // Scroll to the atom canvas so the user can watch the reaction
+    document.querySelector('.atom-viewer-wrap')
+      .scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   function exitReactionMode() {
