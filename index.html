@@ -52,6 +52,27 @@
           <div class="info-row"><span class="info-label">Electronegativity</span><span id="info-eneg">2.20</span></div>
           <div class="info-row"><span class="info-label">State</span><span id="info-state">Gas</span></div>
         </div>
+
+        <!-- Charge Balance Bar -->
+        <div class="charge-bar-section">
+          <h3>Charge Balance</h3>
+          <div class="charge-bar">
+            <div class="charge-bar-side charge-positive">
+              <span class="charge-bar-label">Protons (+)</span>
+              <span class="charge-bar-value" id="charge-protons">1</span>
+            </div>
+            <div class="charge-bar-center" id="charge-result">=0</div>
+            <div class="charge-bar-side charge-negative">
+              <span class="charge-bar-label">Electrons (−)</span>
+              <span class="charge-bar-value" id="charge-electrons">1</span>
+            </div>
+          </div>
+          <div class="ion-mode-row">
+            <button id="ion-mode-btn" class="ctrl-btn" title="Show what happens when this atom reacts">Ion Mode</button>
+            <span class="ion-mode-hint" id="ion-mode-hint"></span>
+          </div>
+        </div>
+
         <div class="isotope-controls">
           <h3>Isotopes</h3>
           <div class="isotope-slider-row">
@@ -65,12 +86,22 @@
             <span id="isotope-stability" class="stable">Stable</span>
           </div>
         </div>
+
+        <!-- Behaviour Panel -->
+        <div class="behaviour-panel" id="behaviour-panel">
+          <button class="behaviour-toggle" id="behaviour-toggle">
+            <span>Why does it behave this way?</span>
+            <span class="toggle-arrow" id="behaviour-arrow">▼</span>
+          </button>
+          <div class="behaviour-cards" id="behaviour-cards"></div>
+        </div>
       </div>
     </section>
   </main>
 
   <script src="js/elements.js"></script>
   <script src="js/periodic-table.js"></script>
+  <script src="js/behaviour.js"></script>
   <script src="js/atom-viewer.js"></script>
   <script src="js/app.js"></script>
 </body>

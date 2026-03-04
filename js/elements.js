@@ -429,6 +429,33 @@ const ELEMENTS = [
   { number: 118, symbol: 'Og', name: 'Oganesson', mass: 294, category: 'unknown', electronConfig: '[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁶', shells: [2,8,18,32,32,18,8], electronegativity: null, state: 'Solid', gridRow: 7, gridCol: 18, isotopes: [[294,'Og-294',false]] },
 ];
 
+/**
+ * Derive the periodic table group number (1-18) from gridCol.
+ * Lanthanides/actinides don't have a standard group — return null.
+ */
+function getGroup(element) {
+  if (element.category === 'lanthanide' || element.category === 'actinide') return null;
+  return element.gridCol;
+}
+
+/**
+ * Get outer shell information for an element.
+ * Returns { outerElectrons, maxOuterElectrons, shellIndex, shellName }
+ */
+function getOuterShellInfo(element) {
+  const shells = element.shells;
+  const shellIndex = shells.length - 1;
+  const outerElectrons = shells[shellIndex];
+  const maxOuterElectrons = shellIndex === 0 ? 2 : 8;
+  const shellNames = ['K', 'L', 'M', 'N', 'O', 'P', 'Q'];
+  return {
+    outerElectrons,
+    maxOuterElectrons,
+    shellIndex,
+    shellName: shellNames[shellIndex] || `S${shellIndex + 1}`
+  };
+}
+
 function getElementById(num) {
   return ELEMENTS.find(e => e.number === num);
 }

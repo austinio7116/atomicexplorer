@@ -15,6 +15,12 @@ const AtomViewer = (() => {
   let showLabels = true;
   let showNucleusDetail = true;
 
+  // Ion mode state
+  let ionMode = false;
+  let ionCharge = 0; // electrons lost (positive) or gained (negative)
+  let ionTransition = 0; // 0 = normal atom, 1 = fully ionised (for animation)
+  let ionTarget = 0;
+
   // Smooth transition state
   let targetShells = [];
   let displayShells = [];
@@ -60,6 +66,12 @@ const AtomViewer = (() => {
     const isotope = element.isotopes[isotopeIdx];
     targetNeutrons = isotope ? isotope[0] - element.number : Math.round(element.mass) - element.number;
 
+    // Reset ion mode
+    ionMode = false;
+    ionCharge = 0;
+    ionTarget = 0;
+    ionTransition = 0;
+
     // Generate nucleus particle layout
     generateNucleusParticles(targetProtons, targetNeutrons);
   }
@@ -103,6 +115,19 @@ const AtomViewer = (() => {
   function toggleLabels() { showLabels = !showLabels; return showLabels; }
   function toggleNucleusDetail() { showNucleusDetail = !showNucleusDetail; return showNucleusDetail; }
 
+  /**
+   * Toggle ion mode. When enabled, animates electron loss/gain.
+   * charge: positive = electrons lost, negative = electrons gained
+   */
+  function setIonMode(enabled, charge) {
+    ionMode = enabled;
+    ionCharge = charge || 0;
+    ionTarget = enabled ? 1 : 0;
+  }
+
+  function getIonMode() { return ionMode; }
+  function getIonTransition() { return ionTransition; }
+
   function animate() {
     time += 0.016 * speedMult;
     draw();
@@ -125,6 +150,9 @@ const AtomViewer = (() => {
     displayProtons = lerp(displayProtons, targetProtons, 0.08);
     displayNeutrons = lerp(displayNeutrons, targetNeutrons, 0.08);
 
+    // Animate ion transition
+    ionTransition = lerp(ionTransition, ionTarget, 0.06);
+
     while (displayShells.length < targetShells.length) displayShells.push(0);
     while (displayShells.length > targetShells.length) displayShells.pop();
     for (let i = 0; i < targetShells.length; i++) {
@@ -135,17 +163,68 @@ const AtomViewer = (() => {
     const maxRadius = Math.min(cx, cy) * 0.88 * zoomMult;
     const nucleusRadius = Math.min(24 + Math.pow(targetProtons, 0.4) * 3, maxRadius * 0.18) * zoomMult;
 
+    // Determine which shell is the outer shell
+    const outerShellIdx = numShells - 1;
+
+    // Ion mode: compute effective electrons to show per shell
+    const ionElectronsRemoved = ionMode ? ionCharge * ionTransition : 0;
+    // ionCharge > 0: losing electrons from outer shell
+    // ionCharge < 0: gaining electrons to outer shell
+
     // Draw shells (orbits)
     for (let s = 0; s < numShells; s++) {
       const shellRadius = nucleusRadius + ((s + 1) / numShells) * (maxRadius - nucleusRadius);
       const color = SHELL_COLORS[s % SHELL_COLORS.length];
+      const isOuter = s === outerShellIdx;
+
+      // In ion mode, check if this shell should still be visible
+      let shellElectronTarget = targetShells[s];
+      let ionShellFade = 1;
+
+      if (ionMode && isOuter && ionCharge > 0) {
+        // Losing electrons: reduce count, fade shell if empty
+        shellElectronTarget = Math.max(0, targetShells[s] - ionCharge * ionTransition);
+        if (targetShells[s] - ionCharge <= 0) {
+          ionShellFade = 1 - ionTransition;
+        }
+      } else if (ionMode && isOuter && ionCharge < 0) {
+        // Gaining electrons
+        shellElectronTarget = targetShells[s] + Math.abs(ionCharge) * ionTransition;
+      }
+
+      // Outer shell highlight glow
+      if (isOuter && ionShellFade > 0.01) {
+        const glowPulse = 0.4 + Math.sin(time * 2) * 0.15;
+        ctx.beginPath();
+        ctx.arc(cx, cy, shellRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3.5;
+        ctx.globalAlpha = glowPulse * ionShellFade;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // "Outer shell" label
+        if (showLabels) {
+          ctx.fillStyle = color;
+          ctx.font = 'bold 10px system-ui';
+          ctx.textAlign = 'left';
+          ctx.globalAlpha = 0.8 * ionShellFade;
+          const labelAngle = -Math.PI / 4;
+          const lx = cx + Math.cos(labelAngle) * (shellRadius + 14);
+          const ly = cy + Math.sin(labelAngle) * (shellRadius + 14);
+          ctx.fillText('outer shell', lx, ly);
+          ctx.globalAlpha = 1;
+        }
+      }
 
       // Orbit ring
       ctx.beginPath();
       ctx.arc(cx, cy, shellRadius, 0, Math.PI * 2);
       ctx.strokeStyle = color + '30';
       ctx.lineWidth = 1.5;
+      ctx.globalAlpha = ionShellFade;
       ctx.stroke();
+      ctx.globalAlpha = 1;
 
       // Shell label
       if (showLabels) {
@@ -153,35 +232,76 @@ const AtomViewer = (() => {
         ctx.font = '10px system-ui';
         ctx.textAlign = 'center';
         const shellNames = ['K', 'L', 'M', 'N', 'O', 'P', 'Q'];
+        ctx.globalAlpha = ionShellFade;
         ctx.fillText(shellNames[s] || `S${s+1}`, cx + shellRadius + 10, cy - 4);
+        ctx.globalAlpha = 1;
+      }
+
+      // Electron count badge on outer shell
+      if (isOuter && showLabels && ionShellFade > 0.01) {
+        const info = getOuterShellInfo(currentElement);
+        const displayCount = ionMode ? Math.round(shellElectronTarget) : info.outerElectrons;
+        const badgeText = `${displayCount} of ${info.maxOuterElectrons}`;
+        const badgeAngle = Math.PI / 4;
+        const bx = cx + Math.cos(badgeAngle) * (shellRadius + 14);
+        const by = cy + Math.sin(badgeAngle) * (shellRadius + 14);
+
+        ctx.globalAlpha = 0.9 * ionShellFade;
+        ctx.font = 'bold 11px system-ui';
+        ctx.textAlign = 'center';
+        const bw = ctx.measureText(badgeText).width + 10;
+        // Badge background
+        ctx.fillStyle = '#1a2235';
+        ctx.strokeStyle = color + '80';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(bx - bw / 2, by - 8, bw, 16, 4);
+        ctx.fill();
+        ctx.stroke();
+        // Badge text
+        ctx.fillStyle = color;
+        ctx.fillText(badgeText, bx, by + 4);
+        ctx.globalAlpha = 1;
       }
 
       // Draw electrons on this shell
-      const electronCount = Math.round(displayShells[s]);
-      for (let e = 0; e < electronCount; e++) {
-        const baseSpeed = (0.3 + 0.15 * s) * speedMult;
-        // Alternate directions for adjacent shells
-        const direction = s % 2 === 0 ? 1 : -1;
-        const angle = direction * time * baseSpeed + (e / electronCount) * Math.PI * 2;
+      const electronCount = isOuter && ionMode
+        ? Math.max(0, Math.round(shellElectronTarget))
+        : Math.round(displayShells[s]);
+      const totalOnShell = Math.round(displayShells[s]); // positions based on original count
 
-        // Slight elliptical wobble for visual interest
+      for (let e = 0; e < electronCount; e++) {
+        const posCount = Math.max(electronCount, totalOnShell); // space evenly
+        const baseSpeed = (0.3 + 0.15 * s) * speedMult;
+        const direction = s % 2 === 0 ? 1 : -1;
+        const angle = direction * time * baseSpeed + (e / posCount) * Math.PI * 2;
+
         const wobble = Math.sin(time * 0.5 + s) * 0.04;
         const rx = shellRadius * (1 + wobble);
         const ry = shellRadius * (1 - wobble);
 
-        const ex = cx + Math.cos(angle) * rx;
-        const ey = cy + Math.sin(angle) * ry;
+        // In ion mode with fading shell, electrons drift outward
+        let drift = 0;
+        if (ionMode && isOuter && ionCharge > 0 && e >= (targetShells[s] - ionCharge)) {
+          drift = ionTransition * 40;
+        }
+
+        const ex = cx + Math.cos(angle) * (rx + drift);
+        const ey = cy + Math.sin(angle) * (ry + drift);
+        const electronAlpha = drift > 0 ? Math.max(0, 1 - ionTransition) : ionShellFade;
 
         // Electron trail (motion blur)
         for (let t = 1; t <= 4; t++) {
           const trailAngle = angle - direction * t * 0.06;
-          const tx = cx + Math.cos(trailAngle) * rx;
-          const ty = cy + Math.sin(trailAngle) * ry;
+          const tx = cx + Math.cos(trailAngle) * (rx + drift);
+          const ty = cy + Math.sin(trailAngle) * (ry + drift);
           ctx.beginPath();
           ctx.arc(tx, ty, 3.5 - t * 0.5, 0, Math.PI * 2);
           ctx.fillStyle = color + (20 - t * 4).toString(16).padStart(2, '0');
+          ctx.globalAlpha = electronAlpha;
           ctx.fill();
         }
+        ctx.globalAlpha = 1;
 
         // Electron glow
         const grad = ctx.createRadialGradient(ex, ey, 0, ex, ey, 10);
@@ -190,6 +310,7 @@ const AtomViewer = (() => {
         ctx.beginPath();
         ctx.arc(ex, ey, 10, 0, Math.PI * 2);
         ctx.fillStyle = grad;
+        ctx.globalAlpha = electronAlpha;
         ctx.fill();
 
         // Electron dot
@@ -200,18 +321,39 @@ const AtomViewer = (() => {
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 0.8;
         ctx.stroke();
+        ctx.globalAlpha = 1;
       }
     }
 
     // Draw nucleus
     drawNucleus(cx, cy, nucleusRadius);
 
+    // Charge display when in ion mode
+    if (ionMode && ionTransition > 0.05) {
+      const chargeVal = Math.round(ionCharge * ionTransition);
+      if (chargeVal !== 0) {
+        const chargeText = (chargeVal > 0 ? '+' : '−') + Math.abs(chargeVal);
+        ctx.globalAlpha = ionTransition;
+        ctx.font = 'bold 18px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = chargeVal > 0 ? '#f87171' : '#60a5fa';
+        ctx.fillText(chargeText + ' charge', cx, cy - maxRadius + 20);
+        ctx.globalAlpha = 1;
+      }
+    }
+
     // Element label
     if (showLabels && currentElement) {
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 16px system-ui';
       ctx.textAlign = 'center';
-      ctx.fillText(currentElement.symbol, cx, cy + nucleusRadius + 22);
+      // Show ion symbol when in ion mode
+      if (ionMode && ionTransition > 0.5 && ionCharge !== 0) {
+        const ionSym = Behaviour.getIonSymbol(currentElement);
+        ctx.fillText(ionSym || currentElement.symbol, cx, cy + nucleusRadius + 22);
+      } else {
+        ctx.fillText(currentElement.symbol, cx, cy + nucleusRadius + 22);
+      }
       ctx.font = '11px system-ui';
       ctx.fillStyle = '#94a3b8';
       const isotope = currentElement.isotopes[currentIsotopeIdx];
@@ -308,5 +450,5 @@ const AtomViewer = (() => {
     }
   }
 
-  return { init, setElement, setIsotope, setSpeed, setZoom, toggleLabels, toggleNucleusDetail };
+  return { init, setElement, setIsotope, setSpeed, setZoom, toggleLabels, toggleNucleusDetail, setIonMode, getIonMode, getIonTransition };
 })();
