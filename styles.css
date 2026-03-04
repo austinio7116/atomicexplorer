@@ -96,7 +96,7 @@ main {
 }
 
 /* === Periodic Table === */
-.periodic-table-container { overflow-x: auto; }
+.periodic-table-container { overflow-x: auto; padding: 6px; }
 
 .periodic-table {
   display: grid;
@@ -284,6 +284,8 @@ main {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .info-header {
@@ -456,11 +458,16 @@ main {
   background: none;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 10px 14px;
+  padding: 14px;
+  min-height: 48px;
   color: var(--accent);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(56, 189, 248, 0.15);
+  user-select: none;
+  -webkit-user-select: none;
   transition: all 0.2s;
 }
 
@@ -645,7 +652,8 @@ main {
 /* === Responsive === */
 @media (max-width: 900px) {
   .atom-panel { flex-direction: column; }
-  .element-info { flex: unset; }
+  .element-info { flex: unset; overflow-y: visible; max-height: none; }
+  .atom-viewer-wrap { min-width: 0; }
   header { padding: 12px 16px; }
   main { padding: 12px 16px; }
 }
