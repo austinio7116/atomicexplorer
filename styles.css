@@ -1,0 +1,408 @@
+/* === Reset & Base === */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0e1a;
+  --bg2: #111827;
+  --bg3: #1a2235;
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --accent: #38bdf8;
+  --accent2: #818cf8;
+  --border: #2d3a52;
+  --alkali: #f87171;
+  --alkaline: #fb923c;
+  --transition: #fbbf24;
+  --post-transition: #a3e635;
+  --metalloid: #34d399;
+  --nonmetal: #22d3ee;
+  --halogen: #60a5fa;
+  --noble: #a78bfa;
+  --lanthanide: #f472b6;
+  --actinide: #fb7185;
+  --unknown: #64748b;
+  --radius: 8px;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* === Header === */
+header {
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  white-space: nowrap;
+}
+
+.search-bar input {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  width: 220px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-bar input:focus { border-color: var(--accent); }
+
+.category-filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cat-btn {
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cat-btn:hover { border-color: var(--text-dim); color: var(--text); }
+.cat-btn.active { color: #fff; border-color: transparent; }
+
+/* === Main Layout === */
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px 24px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* === Periodic Table === */
+.periodic-table-container { overflow-x: auto; }
+
+.periodic-table {
+  display: grid;
+  grid-template-columns: repeat(18, minmax(52px, 1fr));
+  gap: 3px;
+  min-width: 960px;
+}
+
+.element-cell {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  min-height: 52px;
+}
+
+.element-cell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  opacity: 0.18;
+  background: var(--cat-color);
+  transition: opacity 0.2s;
+}
+
+.element-cell:hover::before { opacity: 0.35; }
+.element-cell:hover { border-color: var(--cat-color); transform: scale(1.12); z-index: 5; }
+
+.element-cell.selected {
+  border-color: #fff;
+  transform: scale(1.12);
+  z-index: 5;
+  box-shadow: 0 0 16px rgba(255,255,255,0.2);
+}
+.element-cell.selected::before { opacity: 0.45; }
+
+.element-cell.dimmed { opacity: 0.15; }
+
+.element-cell .number {
+  font-size: 0.55rem;
+  color: var(--text-dim);
+  position: absolute;
+  top: 3px;
+  left: 5px;
+}
+
+.element-cell .symbol {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+.element-cell .name {
+  font-size: 0.42rem;
+  color: var(--text-dim);
+  margin-top: 1px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 90%;
+}
+
+.element-cell.placeholder {
+  cursor: default;
+  pointer-events: none;
+}
+.element-cell.placeholder::before { display: none; }
+
+.element-cell.spacer {
+  visibility: hidden;
+}
+
+.element-cell.label-cell {
+  cursor: default;
+  pointer-events: none;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.element-cell.label-cell::before { display: none; }
+
+.table-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding: 8px 0;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.legend-item:hover { color: var(--text); }
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* === Atom Panel === */
+.atom-panel {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.atom-viewer-wrap {
+  flex: 1;
+  min-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg2);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 16px;
+}
+
+#atom-canvas {
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+}
+
+.viewer-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  width: 100%;
+  justify-content: center;
+}
+
+.viewer-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.viewer-controls input[type="range"] {
+  width: 90px;
+  accent-color: var(--accent);
+}
+
+.ctrl-btn {
+  font-size: 0.72rem;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ctrl-btn:hover { border-color: var(--accent); color: var(--text); }
+.ctrl-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+/* === Element Info === */
+.element-info {
+  flex: 0 0 320px;
+  background: var(--bg2);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.info-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.info-number {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.info-symbol {
+  font-size: 2.8rem;
+  font-weight: 800;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.info-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.info-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.info-label { color: var(--text-dim); }
+
+/* === Isotope Controls === */
+.isotope-controls h3 {
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  color: var(--accent);
+}
+
+.isotope-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.isotope-label {
+  font-size: 0.85rem;
+  min-width: 120px;
+}
+
+#isotope-slider {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.isotope-details {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.isotope-details span {
+  font-size: 0.78rem;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+}
+
+.isotope-details .stable { color: #4ade80; border-color: #4ade8044; }
+.isotope-details .unstable { color: #f87171; border-color: #f8717144; }
+
+/* === Responsive === */
+@media (max-width: 900px) {
+  .atom-panel { flex-direction: column; }
+  .element-info { flex: unset; }
+  header { padding: 12px 16px; }
+  main { padding: 12px 16px; }
+}
+
+/* === Animations === */
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.3); }
+  50% { box-shadow: 0 0 12px 4px rgba(56, 189, 248, 0.15); }
+}
+
+.element-cell.selected { animation: pulse 2s infinite; }
+
+/* Tooltip for periodic table */
+.element-tooltip {
+  position: fixed;
+  z-index: 100;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  pointer-events: none;
+  font-size: 0.8rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  opacity: 0;
+  transition: opacity 0.15s;
+  max-width: 200px;
+}
+
+.element-tooltip.visible { opacity: 1; }
+.element-tooltip .tt-symbol { font-size: 1.4rem; font-weight: 700; }
+.element-tooltip .tt-name { color: var(--text-dim); }
+.element-tooltip .tt-mass { color: var(--text-dim); font-size: 0.75rem; margin-top: 4px; }

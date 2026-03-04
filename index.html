@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atomic Explorer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Atomic Explorer</h1>
+    <div class="search-bar">
+      <input type="text" id="element-search" placeholder="Search elements..." autocomplete="off">
+    </div>
+    <div class="category-filters" id="category-filters"></div>
+  </header>
+
+  <main>
+    <section class="periodic-table-container">
+      <div class="periodic-table" id="periodic-table"></div>
+      <div class="table-legend" id="table-legend"></div>
+    </section>
+
+    <section class="atom-panel">
+      <div class="atom-viewer-wrap">
+        <canvas id="atom-canvas" width="500" height="500"></canvas>
+        <div class="viewer-controls">
+          <label>
+            <span>Speed</span>
+            <input type="range" id="speed-slider" min="0.1" max="3" step="0.1" value="1">
+          </label>
+          <label>
+            <span>Zoom</span>
+            <input type="range" id="zoom-slider" min="0.5" max="2" step="0.1" value="1">
+          </label>
+          <button id="toggle-labels" class="ctrl-btn active" title="Toggle labels">Labels</button>
+          <button id="toggle-nucleus-detail" class="ctrl-btn active" title="Show individual protons/neutrons">Nucleus</button>
+        </div>
+      </div>
+
+      <div class="element-info" id="element-info">
+        <div class="info-header">
+          <span class="info-number" id="info-number">1</span>
+          <span class="info-symbol" id="info-symbol">H</span>
+          <span class="info-name" id="info-name">Hydrogen</span>
+        </div>
+        <div class="info-details">
+          <div class="info-row"><span class="info-label">Category</span><span id="info-category">Nonmetal</span></div>
+          <div class="info-row"><span class="info-label">Atomic Mass</span><span id="info-mass">1.008</span></div>
+          <div class="info-row"><span class="info-label">Electron Config</span><span id="info-config">1s¹</span></div>
+          <div class="info-row"><span class="info-label">Shells</span><span id="info-shells">1</span></div>
+          <div class="info-row"><span class="info-label">Electronegativity</span><span id="info-eneg">2.20</span></div>
+          <div class="info-row"><span class="info-label">State</span><span id="info-state">Gas</span></div>
+        </div>
+        <div class="isotope-controls">
+          <h3>Isotopes</h3>
+          <div class="isotope-slider-row">
+            <span class="isotope-label" id="isotope-label">¹H (Protium)</span>
+            <input type="range" id="isotope-slider" min="0" max="0" value="0">
+          </div>
+          <div class="isotope-details">
+            <span id="isotope-protons">1p</span>
+            <span id="isotope-neutrons">0n</span>
+            <span id="isotope-mass-number">A=1</span>
+            <span id="isotope-stability" class="stable">Stable</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/elements.js"></script>
+  <script src="js/periodic-table.js"></script>
+  <script src="js/atom-viewer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
